@@ -82,32 +82,46 @@ int main(int argc, char *argv[]) {
 
 		for (int i = 0; i < argcount; i++) {
 			if (*args[i] == '|') {
-				char *pipe_fill = args[i-1];
+				char *pipe_fill = cmd;
 				char *pipe_drain = args[i+1];
 				//printf("fill: %s drain: %s\n", pipe_fill, pipe_drain);
 				pipe(pipeint);
 		
 				child_pid = fork();
-				close(4);
-				child_pid2 = fork();
-				close(3);
-
 				if (child_pid == 0) {
 					printf("ls process\n");
+					dup2(4, 1);
 					close(4);
 					close(3);
-					exit(42);
+					execvp(cmd, commargs);
+					exit(0);
 				}
-				else if (child_pid2 == 0) {
+				close(4);
+				child_pid2 = fork();
+				if (child_pid2 == 0) {
 					printf("grep process\n");
+					dup2(3, 0);
 					close(3);
-					exit(42);
+					char *pipe_drain_args[12];
+
+					int j;
+					int x;
+					int count = 0;
+					for (j = i + 1, x = 0; j < argcount; j++, x++) {
+						pipe_drain_args[x] = args[j];
+					       	printf("yeah: %s\n", pipe_drain_args[x]);
+						count++;	
+					}
+					pipe_drain_args[count] = NULL;
+					execvp(args[i + 1], pipe_drain_args); 
+					exit(0);
 				}
-				printf("parent process before wait\n");	
+				close(3);
+				//printf("parent process before wait\n");	
 				wait(NULL);
-				printf("parent process between\n");
+				//printf("parent process between\n");
 				wait(NULL);
-				printf("parent process after\n");
+				//printf("parent process after\n");
 			}
 		}
 
