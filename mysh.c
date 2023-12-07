@@ -46,21 +46,21 @@ int main(int argc, char *argv[]) {
 		char *lastarg = args[argcount - 1];
 		lastarg[strcspn(lastarg, "\n")] = 0;
 
-		pid_t child_pid, exit_pid;
-		int exit_value;
+		pid_t child_pid, child_pid2, exit_pid, exit_pid2;
+		int exit_value, exit_value2;
 
 		char *commargs[argcount];
 		int commargcount = 0;
 
-		printf("before that\n");
+		//printf("before that\n");
 
 
 		//we want to create a list of just the arguments relevant to the ls command (so not I/O redirection)
 		for (int j = 0; j < argcount; j++) {
-			printf("breaking immediately?\n");
+			//printf("breaking immediately?\n");
 			if (*args[j] == '<' || *args[j] == '>' || *args[j] == '|') {
-				commargs[j + 1] = NULL;
-				j = 12;
+				commargs[j] = NULL;
+				break;
 			}
 			else {
 				commargs[j] = args[j];
@@ -68,34 +68,70 @@ int main(int argc, char *argv[]) {
 			commargcount++;
 		}
 
-
-		printf("after\n");
+		commargs[commargcount] = NULL;
+		//might later want to break it down even more into things on either side of a pipe and have it recursively do piping kind of
+		
+		//this is just if there is no io redirection
+		//execvp(cmd, commargs);
 		
 		for (int n = 0; n < commargcount; n++) {
-			printf(
+			printf("commargs: %s\n", commargs[n]);
 		}
 
+		int pipeint[2] = {3, 4};
 
+		for (int i = 0; i < argcount; i++) {
+			if (*args[i] == '|') {
+				char *pipe_fill = args[i-1];
+				char *pipe_drain = args[i+1];
+				//printf("fill: %s drain: %s\n", pipe_fill, pipe_drain);
+				pipe(pipeint);
+		
+				child_pid = fork();
+				close(4);
+				child_pid2 = fork();
+				close(3);
 
+				if (child_pid == 0) {
+					printf("ls process\n");
+					close(4);
+					close(3);
+					exit(42);
+				}
+				else if (child_pid2 == 0) {
+					printf("grep process\n");
+					close(3);
+					exit(42);
+				}
+				printf("parent process before wait\n");	
+				wait(NULL);
+				printf("parent process between\n");
+				wait(NULL);
+				printf("parent process after\n");
+			}
+		}
 
+		//this handles the I/O redirection
+		
 		if ((child_pid = fork()) < 0) {
 			perror("fork() error");
 		}
 		else if (child_pid == 0) {
-
-
+			//printf("child executing\n");
+			
 			for (int i = 1; i < argcount; i++) {
 				int fd;
 				switch (*args[i]) { //i think this should be fine we only care about > >> < and | and those are all just one character or can be compared to just one more char
 					//we want to create a list of just the arguments relevant to the ls command (so not I/O redirection)
 					case '>':
-						printf("Case >\n");
+						//printf("Case >\n");
 						//if it isn't >> output redirection
 						if (*args[i + 1] != '>') {
-							fd = open(args[i + 1], O_RDWR | O_CREAT);
+							//printf("here\n");
+							fd = open(args[i + 1], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 						}
 						else { //if it is >>
-							fd = open(args[i + 2], O_RDWR | O_APPEND | O_CREAT);
+							fd = open(args[i + 2], O_RDWR | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
 							i++; //I think this would be necessary to skip the next '>'
 						}
 						dup2(fd, 1);
@@ -104,18 +140,19 @@ int main(int argc, char *argv[]) {
 
 						break;
 					case '<':
-						printf("Case <\n");
-						fd = open(args[i + 1], O_RDWR);
+						//printf("Case <\n");
+						fd = open(args[i + 1], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 						dup2(fd, 0);
 						//execvp(cmd, args);
 						break;
 					default:
-						printf("no action necessary\n");
+						//printf("no action necessary\n");
 						break;
 				}
 
 			}
-			printf("bout to exec\n");
+			
+			//printf("bout to exec\n");
 			execvp(cmd, commargs);
 			exit(42);
 		}
@@ -126,6 +163,9 @@ int main(int argc, char *argv[]) {
 			}
 			//how do I deal with the error here
 		}
+		
+	
+	
 	}
 
 
