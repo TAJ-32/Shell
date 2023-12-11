@@ -78,30 +78,67 @@ int main(int argc, char *argv[]) {
 			printf("commargs: %s\n", commargs[n]);
 		}
 
-		int pipeint[2] = {3, 4};
+		//int pipeint[2] = {3, 4};
+		int numPipes;
+			
+		for (int i = 0; i < argcount; i++) {
+			if(*args[i] == '|') {
+				numPipes += 1;
+			}
+		}
+
+		int pipefds[2*numPipes];
+
+		for (int i = 0; i < numPipes; i++) {
+			pipe(pipefds + i*2);
+
+		}
+
+	//	for (int i = 0; i < numPipes; i++) {
+
+			
+
+	//	}
+
+
+	
+
+		//is there a way to find out what file descriptor the process *pipe_fill writes to and have it be a variable (I dont believe this is necessary anymore)
+		//How do we make it so we can have multiple pipes?
+		//Do we have to worry about if a command does not exist: Yes.
+		//Need a case for if args != 2, or a case where the pipe does not have an input or an output
 
 		for (int i = 0; i < argcount; i++) {
 			if (*args[i] == '|') {
 				char *pipe_fill = cmd;
 				char *pipe_drain = args[i+1];
 				//printf("fill: %s drain: %s\n", pipe_fill, pipe_drain);
-				pipe(pipeint);
+				//pipe(pipeint);
 		
 				child_pid = fork();
 				if (child_pid == 0) {
-					printf("ls process\n");
-					dup2(4, 1);
+					//printf("ls process\n");
+					if (dup2(4,1) < 0) {
+						perror("dup2");
+						exit(1);
+					}
 					close(4);
 					close(3);
-					execvp(cmd, commargs);
-					exit(0);
+					if(execvp(pipe_fill, commargs) == -1) {
+						printf("Command not found\n");
+						exit(1);
+					}
 				}
 				close(4);
 				child_pid2 = fork();
 				if (child_pid2 == 0) {
-					printf("grep process\n");
-					dup2(3, 0);
+					//printf("grep process\n");
+					if(dup2(3,0) < 0) {
+						perror("dup2");
+						exit(1);
+					}
 					close(3);
+					
 					char *pipe_drain_args[12];
 
 					int j;
@@ -109,19 +146,17 @@ int main(int argc, char *argv[]) {
 					int count = 0;
 					for (j = i + 1, x = 0; j < argcount; j++, x++) {
 						pipe_drain_args[x] = args[j];
-					       	printf("yeah: %s\n", pipe_drain_args[x]);
+					       	//printf("yeah: %s\n", pipe_drain_args[x]);
 						count++;	
 					}
 					pipe_drain_args[count] = NULL;
-					execvp(args[i + 1], pipe_drain_args); 
+					
+					execvp(pipe_drain, pipe_drain_args); 
 					exit(0);
 				}
-				close(3);
-				//printf("parent process before wait\n");	
+				close(3);	
 				wait(NULL);
-				//printf("parent process between\n");
 				wait(NULL);
-				//printf("parent process after\n");
 			}
 		}
 
