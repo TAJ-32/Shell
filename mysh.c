@@ -49,41 +49,75 @@ int main(int argc, char *argv[]) {
 		pid_t child_pid, child_pid2, exit_pid, exit_pid2;
 		int exit_value, exit_value2;
 
-		char *commargs[argcount];
+		//char *commargs[argcount];
 		int commargcount = 0;
-
+		int delim_count = 0;
+		int block_num = 0;
+		
+		struct cmd_block {
+			int arg_num;
+			char* arg_array[12];
+		};
 		//printf("before that\n");
 
-
 		//we want to create a list of just the arguments relevant to the ls command (so not I/O redirection)
-		for (int j = 0; j < argcount; j++) {
-			//printf("breaking immediately?\n");
-			if (*args[j] == '<' || *args[j] == '>' || *args[j] == '|') {
-				commargs[j] = NULL;
-				break;
-			}
-			else {
-				commargs[j] = args[j];
-			}
-			commargcount++;
+		for (int i = 0; i < 12; i++) {
+			if (*args[i] == '<' || *args[i] == '>' || *args[i] == '|') {
+				delim_count++;
+
+			}	
 		}
 
-		commargs[commargcount] = NULL;
+		block_num = delim_count+1;
+
+		struct cmd_block *block_array[block_num + 1]; //might need to be block_num + 1 because array needs to be NULL terminated	
+		for (int i = 0; i < block_num + 1; i++) {
+			struct cmd_block *new_block; //need to allocate mem for this
+			block_array[i] = new_block;
+		}
+
+		block_array[block_num] = NULL;
+
+		for (int i = 0; i < block_num; i++) {
+			char* temp_array[12];
+			for (int j = 0; j < argcount; j++) {
+				if (*args[j] == '<' || *args[j] == '>' || *args[j] == '|') {
+			
+					block_num += 1;
+				}
+				else {
+					temp_array[j] = args[j];
+					block_array[i]->arg_num += 1;
+				}
+				
+			}
+			//block_array[i]->arg_array[] = temp_array[];
+			i++;
+		}
+
+		for (int i = 0; block_num+1; i++) {
+			for (int j = 0; j < block_array[i]->arg_num; j++) {
+				printf("%s\n", block_array[i]->arg_array[j]);
+			}
+		}
+
 		//might later want to break it down even more into things on either side of a pipe and have it recursively do piping kind of
 		
 		//this is just if there is no io redirection
 		//execvp(cmd, commargs);
-		
-		for (int n = 0; n < commargcount; n++) {
-			printf("commargs: %s\n", commargs[n]);
-		}
+
 
 		//int pipeint[2] = {3, 4};
 		int numPipes;
+		int pipe_Indices[5];
+		int x = 0;
 			
 		for (int i = 0; i < argcount; i++) {
 			if(*args[i] == '|') {
 				numPipes += 1;
+				pipe_Indices[x] = i;
+				x++;
+				
 			}
 		}
 
@@ -94,19 +128,13 @@ int main(int argc, char *argv[]) {
 
 		}
 
-	//	for (int i = 0; i < numPipes; i++) {
-
-			
-
-	//	}
-
-
+		// ls | grep m | sort
 	
-
 		//is there a way to find out what file descriptor the process *pipe_fill writes to and have it be a variable (I dont believe this is necessary anymore)
 		//How do we make it so we can have multiple pipes?
 		//Do we have to worry about if a command does not exist: Yes.
 		//Need a case for if args != 2, or a case where the pipe does not have an input or an output
+		//ls | grep m is doing ls and ls | grep m and i dont know why. FIXED
 
 		for (int i = 0; i < argcount; i++) {
 			if (*args[i] == '|') {
@@ -124,6 +152,8 @@ int main(int argc, char *argv[]) {
 					}
 					close(4);
 					close(3);
+					printf("cmd is: %s\n", cmd);
+					//printf("%s\n", commargs);
 					if(execvp(pipe_fill, commargs) == -1) {
 						printf("Command not found\n");
 						exit(1);
@@ -202,7 +232,7 @@ int main(int argc, char *argv[]) {
 			}
 			
 			//printf("bout to exec\n");
-			execvp(cmd, commargs);
+			//execvp(cmd, commargs);
 			exit(42);
 		}
 		else { //shell process waits for the child (the command the user gave) to terminate
