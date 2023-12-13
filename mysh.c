@@ -19,101 +19,88 @@ int main(int argc, char *argv[]) {
 
 		printf("[%s]# ", current_dir);
 		fgets(input, 4096, stdin); //use fgets to store the command in a string
-		
+	
+		input[strcspn(input, "\n")] = 0;
 
 		char buf[] = "hello my friend";
 
-		char *tok = strtok(input, " ");
-		char *cmd = tok;
+		//strtok the pipes
 
 
+		//char *arg_blocks[12];
+
+		struct block {
+			int num_args;
+			char *args[12];
+		};
+
+		char *arg_blocks[12]; //might need to be block_num + 1 because array needs to be NULL terminated	
+
+		
+		
+		char *pipe_tok = strtok(input, "|");
+		int num_blocks = 0;
+
+		while (pipe_tok != NULL) {
+			arg_blocks[num_blocks] = pipe_tok;
+			pipe_tok = strtok(NULL, "|");
+			num_blocks++;
+		}
+
+		for (int i = 0; i < num_blocks; i++) {
+			printf("blocks: %s\n", arg_blocks[i]);
+		}
+
+
+		struct block *final_blocks[12];
+
+		for (int i = 0; i < 12; i++) {
+			struct block *new_block = malloc(sizeof(struct block)); //need to allocate mem for this
+			new_block->num_args = 0;
+			final_blocks[i] = new_block;
+		}
+
+		char *space_tok;
+	       	char *cmd = space_tok;	
+		
 		char *args[12];
-		//args[0] = tok;
-		int argcount = 0;
-		while (tok != NULL) {
-			args[argcount] = tok;
-			tok = strtok(NULL, " ");
+		int argcount = 0;	
+		int block_count = 0;
 
-			argcount++;
+		for (int i = 0; i < num_blocks; i++) {
+			space_tok = strtok(arg_blocks[i], " ");
+			int args_in_blk = final_blocks[i]->num_args;
+			while(space_tok != NULL) {
+				args[argcount] = space_tok;
+				final_blocks[i]->args[args_in_blk] = space_tok;
+				space_tok = strtok(NULL, " ");
+
+				argcount++;
+				args_in_blk++;
+			}
+			final_blocks[i]->num_args = args_in_blk;
+			final_blocks[i]->args[args_in_blk] = NULL;
 		}
 
 		args[argcount] = NULL; //want to null terminate the arguments
-
-		char *lastarg = args[argcount - 1];
-		lastarg[strcspn(lastarg, "\n")] = 0;
-
-		pid_t child_pid, child_pid2, exit_pid, exit_pid2;
-		int exit_value, exit_value2;
-
-		//char *commargs[argcount];
-		int commargcount = 0;
-		int delim_count = 0;
-		int block_num = 0;
-		
-		struct cmd_block {
-			int arg_num;
-			char* arg_array[12];
-			//bool if pipe_fill or pipe_drain or output_redirec or input_redirec
-		};
-		//printf("before that\n");
-
-		//we want to create a list of just the arguments relevant to the ls command (so not I/O redirection)
-		for (int i = 0; i < argcount; i++) {
-			if (*args[i] == '<' || *args[i] == '>' || *args[i] == '|') {
-				delim_count++;
-
-			}	
-		}
-
-		block_num = delim_count+1;
-
-		struct cmd_block *block_array[block_num + 1]; //might need to be block_num + 1 because array needs to be NULL terminated	
-		for (int i = 0; i < block_num; i++) {
-			struct cmd_block *new_block = malloc(sizeof(struct cmd_block)); //need to allocate mem for this
-			block_array[i] = new_block;
-		}
-
-		printf("%d\n", (block_array[0]->arg_num));
-
-		block_array[block_num] = NULL;
-
-		int place_saver = 0;
-		printf("block num: %d\n", block_num);
-		
-		for (int i = 0; i < block_num; i++) {
-			for (int j = place_saver; j < argcount; j++) {
-				if (*args[j] == '<' || *args[j] == '>' || *args[j] == '|') {
-					place_saver += 1;
-					break;
-				}
-				else {
-					printf("args[j]: %s\n", args[j]);
-					block_array[i]->arg_array[j] = args[j];
-					printf("something %s\n", block_array[i]->arg_array[j]);
-					block_array[i]->arg_num += 1;
-					place_saver += 1;
-				}
-			}
-		}
-
-
-		for (int i = 0; i < block_num; i++) {
-			for (int j = 0; j < block_array[i]->arg_num; j++) {
-				printf("Hey %s\n", block_array[i]->arg_array[j]);
-			}
-		}
-
-		//might later want to break it down even more into things on either side of a pipe and have it recursively do piping kind of
-		
-		//this is just if there is no io redirection
-		//execvp(cmd, commargs);
+		arg_blocks[num_blocks] = NULL;
 
 
 		//int pipeint[2] = {3, 4};
 		int numPipes;
 		int pipe_Indices[5];
 		int x = 0;
-			
+
+		for (int i = 0; i < num_blocks; i++) {
+			printf("BLOCK %d: [", i);
+			for (int j = 0; j < final_blocks[i]->num_args; j++) {
+				printf("%s,", final_blocks[i]->args[j]);
+			}
+			printf("]\n");
+		}
+
+
+
 		for (int i = 0; i < argcount; i++) {
 			if(*args[i] == '|') {
 				numPipes += 1;
@@ -125,9 +112,100 @@ int main(int argc, char *argv[]) {
 
 		int pipefds[2*numPipes];
 
+
+
+		//char *lastarg = args[argcount - 1];
+		//lastarg[strcspn(lastarg, "\n")] = 0;
+
+		pid_t child_pid, child_pid2, exit_pid, exit_pid2;
+		int exit_value, exit_value2;
+
+		/*
+		if ((child_pid = fork()) < 0) {
+					perror("fork() error");
+				}
+		else if (child_pid == 0) {
+			//printf("child executing\n");
+			
+			for (int i = 1; i < argcount; i++) {
+				int fd;
+				switch (*args[i]) { //i think this should be fine we only care about > >> < and | and those are all just one character or can be compared to just one more char
+					//we want to create a list of just the arguments relevant to the ls command (so not I/O redirection)
+					case '>':
+						//printf("Case >\n");
+						//if it isn't >> output redirection
+						if (*args[i + 1] != '>') {
+							//printf("here\n");
+							fd = open(args[i + 1], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+						}
+						else { //if it is >>
+							fd = open(args[i + 2], O_RDWR | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
+							i++; //I think this would be necessary to skip the next '>'
+						}
+						dup2(fd, 1);
+						//execvp(cmd, args);
+						//
+
+						break;
+					case '<':
+						//printf("Case <\n");
+						fd = open(args[i + 1], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+						dup2(fd, 0);
+						//execvp(cmd, args);
+						break;
+					default:
+						//printf("no action necessary\n");
+						break;
+				}
+
+			}
+			
+			//printf("bout to exec\n");
+			//execvp(cmd, commargs);
+			exit(42);
+		}
+		else { //shell process waits for the child (the command the user gave) to terminate
+
+			if ((exit_pid = wait(&exit_value)) == -1) {
+				perror("wait() error");
+			}
+			//how do I deal with the error here
+		}
+		*/
+
+
+		//char *commargs[argcount];
+		int commargcount = 0;
+		int delim_count = 0;
+		int block_num = 0;
+		
+		//printf("before that\n");
+
+
+
+		for (int i = 0; i < argcount; i++) {
+			if (*args[i] == '<' || *args[i] == '>' || *args[i] == '|') {
+				delim_count++;
+
+			}	
+		}
+
+		//might later want to break it down even more into things on either side of a pipe and have it recursively do piping kind of
+		
+		//this is just if there is no io redirection
+		//execvp(cmd, commargs);
+
+
+
+
+		//should we make all the pipes here or just identify 
+		//the pipe symbols first and then as we complete pipes,
+		//make new ones. Meaning, we only call pipe on the first
+		//pipe and only after we have completed the write and read
+		//for that pipe do we call another pipe syscall for the next
+		//pipe?
 		for (int i = 0; i < numPipes; i++) {
 			pipe(pipefds + i*2);
-
 		}
 
 		// ls | grep m | sort
@@ -193,61 +271,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		//this handles the I/O redirection
-		
-		if ((child_pid = fork()) < 0) {
-			perror("fork() error");
-		}
-		else if (child_pid == 0) {
-			//printf("child executing\n");
-			
-			for (int i = 1; i < argcount; i++) {
-				int fd;
-				switch (*args[i]) { //i think this should be fine we only care about > >> < and | and those are all just one character or can be compared to just one more char
-					//we want to create a list of just the arguments relevant to the ls command (so not I/O redirection)
-					case '>':
-						//printf("Case >\n");
-						//if it isn't >> output redirection
-						if (*args[i + 1] != '>') {
-							//printf("here\n");
-							fd = open(args[i + 1], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-						}
-						else { //if it is >>
-							fd = open(args[i + 2], O_RDWR | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
-							i++; //I think this would be necessary to skip the next '>'
-						}
-						dup2(fd, 1);
-						//execvp(cmd, args);
-						//
-
-						break;
-					case '<':
-						//printf("Case <\n");
-						fd = open(args[i + 1], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-						dup2(fd, 0);
-						//execvp(cmd, args);
-						break;
-					default:
-						//printf("no action necessary\n");
-						break;
-				}
-
-			}
-			
-			//printf("bout to exec\n");
-			//execvp(cmd, commargs);
-			exit(42);
-		}
-		else { //shell process waits for the child (the command the user gave) to terminate
-
-			if ((exit_pid = wait(&exit_value)) == -1) {
-				perror("wait() error");
-			}
-			//how do I deal with the error here
-		}
-		
-	
-	
+		//this handles the I/O redirection		
 	}
 
 
