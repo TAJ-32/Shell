@@ -36,12 +36,8 @@ int main(int argc, char *argv[]) {
 
 			argcount++;
 		}
+
 		args[argcount] = NULL; //want to null terminate the arguments
-		
-		int delim_loc = 1; //index of where first I/O redirect char is
-		//for (int j = 1; j < argcount; j++) {
-			
-		//}
 
 		char *lastarg = args[argcount - 1];
 		lastarg[strcspn(lastarg, "\n")] = 0;
@@ -57,11 +53,12 @@ int main(int argc, char *argv[]) {
 		struct cmd_block {
 			int arg_num;
 			char* arg_array[12];
+			//bool if pipe_fill or pipe_drain or output_redirec or input_redirec
 		};
 		//printf("before that\n");
 
 		//we want to create a list of just the arguments relevant to the ls command (so not I/O redirection)
-		for (int i = 0; i < 12; i++) {
+		for (int i = 0; i < argcount; i++) {
 			if (*args[i] == '<' || *args[i] == '>' || *args[i] == '|') {
 				delim_count++;
 
@@ -71,33 +68,38 @@ int main(int argc, char *argv[]) {
 		block_num = delim_count+1;
 
 		struct cmd_block *block_array[block_num + 1]; //might need to be block_num + 1 because array needs to be NULL terminated	
-		for (int i = 0; i < block_num + 1; i++) {
-			struct cmd_block *new_block; //need to allocate mem for this
+		for (int i = 0; i < block_num; i++) {
+			struct cmd_block *new_block = malloc(sizeof(struct cmd_block)); //need to allocate mem for this
 			block_array[i] = new_block;
 		}
 
+		printf("%d\n", (block_array[0]->arg_num));
+
 		block_array[block_num] = NULL;
 
+		int place_saver = 0;
+		printf("block num: %d\n", block_num);
+		
 		for (int i = 0; i < block_num; i++) {
-			char* temp_array[12];
-			for (int j = 0; j < argcount; j++) {
+			for (int j = place_saver; j < argcount; j++) {
 				if (*args[j] == '<' || *args[j] == '>' || *args[j] == '|') {
-			
-					block_num += 1;
+					place_saver += 1;
+					break;
 				}
 				else {
-					temp_array[j] = args[j];
+					printf("args[j]: %s\n", args[j]);
+					block_array[i]->arg_array[j] = args[j];
+					printf("something %s\n", block_array[i]->arg_array[j]);
 					block_array[i]->arg_num += 1;
+					place_saver += 1;
 				}
-				
 			}
-			//block_array[i]->arg_array[] = temp_array[];
-			i++;
 		}
 
-		for (int i = 0; block_num+1; i++) {
+
+		for (int i = 0; i < block_num; i++) {
 			for (int j = 0; j < block_array[i]->arg_num; j++) {
-				printf("%s\n", block_array[i]->arg_array[j]);
+				printf("Hey %s\n", block_array[i]->arg_array[j]);
 			}
 		}
 
@@ -154,10 +156,11 @@ int main(int argc, char *argv[]) {
 					close(3);
 					printf("cmd is: %s\n", cmd);
 					//printf("%s\n", commargs);
-					if(execvp(pipe_fill, commargs) == -1) {
-						printf("Command not found\n");
-						exit(1);
-					}
+					//if(execvp(pipe_fill, commargs) == -1) {
+					//	printf("Command not found\n");
+					//	exit(1);
+					//}
+					
 				}
 				close(4);
 				child_pid2 = fork();
