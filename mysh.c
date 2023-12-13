@@ -32,11 +32,15 @@ int main(int argc, char *argv[]) {
 		struct block {
 			int num_args;
 			char *args[12];
+			char *commargs[12];
 		};
 
 		char *arg_blocks[12]; //might need to be block_num + 1 because array needs to be NULL terminated	
 
-		
+
+
+
+		//how much of the parsing should I be doing in the child
 		
 		char *pipe_tok = strtok(input, "|");
 		int num_blocks = 0;
@@ -101,68 +105,71 @@ int main(int argc, char *argv[]) {
 
 
 
-		for (int i = 0; i < argcount; i++) {
-			if(*args[i] == '|') {
-				numPipes += 1;
-				pipe_Indices[x] = i;
-				x++;
-				
-			}
-		}
-
-		int pipefds[2*numPipes];
-
-
-
-		//char *lastarg = args[argcount - 1];
-		//lastarg[strcspn(lastarg, "\n")] = 0;
-
 		pid_t child_pid, child_pid2, exit_pid, exit_pid2;
 		int exit_value, exit_value2;
 
-		/*
 		if ((child_pid = fork()) < 0) {
-					perror("fork() error");
-				}
+			perror("fork() error");
+		}
 		else if (child_pid == 0) {
-			//printf("child executing\n");
-			
-			for (int i = 1; i < argcount; i++) {
-				int fd;
-				switch (*args[i]) { //i think this should be fine we only care about > >> < and | and those are all just one character or can be compared to just one more char
-					//we want to create a list of just the arguments relevant to the ls command (so not I/O redirection)
-					case '>':
-						//printf("Case >\n");
-						//if it isn't >> output redirection
-						if (*args[i + 1] != '>') {
-							//printf("here\n");
-							fd = open(args[i + 1], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-						}
-						else { //if it is >>
-							fd = open(args[i + 2], O_RDWR | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
-							i++; //I think this would be necessary to skip the next '>'
-						}
-						dup2(fd, 1);
-						//execvp(cmd, args);
-						//
 
-						break;
-					case '<':
-						//printf("Case <\n");
-						fd = open(args[i + 1], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-						dup2(fd, 0);
-						//execvp(cmd, args);
-						break;
-					default:
-						//printf("no action necessary\n");
-						break;
+			//why start making the blocks here? Doesn't it make more sense to have the entire line the user input
+			//and then go through each part of each block, forking as we go along for any process we see,
+			//redirecting output for any > or < we see, and piping for any | we see?
+			//
+			//For example: We have ls -l < myfile.txt | grep m;
+			//	The first block is [ls, -l, <, myfile.txt]
+			//	The second block is [grep, m]
+			//	If there is more than one block, that means we are going to need to pipe
+			//	We loop through each block one at a time, forking at the beginning of the loop to create a child for this block to run 
+			//		its process because every block will have a process to run, even if no pipe is gonna happen
+			//	We check if a pipe is going to follow this block. We do that by knowing there is one less pipe than there are blocks. So if
+			//		we are on the first block of two, we know we are writing into a pipe. If we are on the second block of three,
+			//		we are reading from a pipe and writing to a different one, if we are on the third block of four, same thing, etc.
+			//		based on that, we can know if we will need to pipe once or twice in this iteration of a loop
+			//	Regardless, we loop through our first block and see a <
+			//	Everything before that <, which is [ls, -l] gets exec'ed. 
+			//	We can maybe save that in a separate temp array within the child and then exec with it
+			//	The rest of the block we also still have access to and so we can open whatever comes after the <, which is myfile.txt
+			//	All of this is still happening in the child.
+			//	We dup2(fd, 1). If we are piping into something, we also dup2(pipeint[1], 1).
+			//	If we are draining from a pipe, we also do dup2(pipeint[0], 0)
+			//	Then we execvp(temp_array[0], temp_array);
+
+			for (int i = 0; i < num_blocks; i++) {
+				for (int j = 0; j < final_blocks[i]->num_args; j++) {
+					int fd;
+					switch (*final_blocks[i]->args[j]) {
+						case '>':
+							//printf("Case >\n");
+							//if it isn't >> output redirection
+							if (*final_blocks[i]->args[j + 1] != '>') {
+								//printf("here\n");
+								fd = open(final_blocks[i]->args[j + 1], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+							}
+							else { //if it is >>
+								fd = open(final_blocks[i]->args[j + 2], O_RDWR | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
+								j++; //I think this would be necessary to skip the next '>'
+							}
+							dup2(fd, 1);
+							//execvp(cmd, args);
+							//
+
+							break;
+						case '<':
+							//printf("Case <\n");
+							fd = open(final_blocks[i]->args[j + 2], O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+							dup2(fd, 0);
+							//execvp(cmd, args);
+							break;
+						default:
+							final_blocks[i]->commargs[j] = args[j];
+							//printf("no action necessary\n");
+							break;
+					}
+
 				}
-
 			}
-			
-			//printf("bout to exec\n");
-			//execvp(cmd, commargs);
-			exit(42);
 		}
 		else { //shell process waits for the child (the command the user gave) to terminate
 
@@ -171,51 +178,28 @@ int main(int argc, char *argv[]) {
 			}
 			//how do I deal with the error here
 		}
+
+	}
+}
+
+
+/*
+		for (int i = 0; i < argcount; i++) {
+			if(*args[i] == '|') {
+				numPipes += 1;
+				pipe_Indices[x] = i;
+				x++;
+				
+			}
+		}
 		*/
 
 
-		//char *commargs[argcount];
-		int commargcount = 0;
-		int delim_count = 0;
-		int block_num = 0;
-		
-		//printf("before that\n");
 
 
-
-		for (int i = 0; i < argcount; i++) {
-			if (*args[i] == '<' || *args[i] == '>' || *args[i] == '|') {
-				delim_count++;
-
-			}	
-		}
-
-		//might later want to break it down even more into things on either side of a pipe and have it recursively do piping kind of
-		
-		//this is just if there is no io redirection
-		//execvp(cmd, commargs);
-
-
-
-
-		//should we make all the pipes here or just identify 
-		//the pipe symbols first and then as we complete pipes,
-		//make new ones. Meaning, we only call pipe on the first
-		//pipe and only after we have completed the write and read
-		//for that pipe do we call another pipe syscall for the next
-		//pipe?
-		for (int i = 0; i < numPipes; i++) {
-			pipe(pipefds + i*2);
-		}
-
-		// ls | grep m | sort
 	
-		//is there a way to find out what file descriptor the process *pipe_fill writes to and have it be a variable (I dont believe this is necessary anymore)
-		//How do we make it so we can have multiple pipes?
-		//Do we have to worry about if a command does not exist: Yes.
-		//Need a case for if args != 2, or a case where the pipe does not have an input or an output
-		//ls | grep m is doing ls and ls | grep m and i dont know why. FIXED
 
+		/*
 		for (int i = 0; i < argcount; i++) {
 			if (*args[i] == '|') {
 				char *pipe_fill = cmd;
@@ -273,74 +257,6 @@ int main(int argc, char *argv[]) {
 
 		//this handles the I/O redirection		
 	}
-
-
-			/*
-			for (int i = 1; i < argcount; i++) {
-				int fd;
-				//printf("%c\n", args[i][0]);
-				if (*args[i] == '>') {
-					//if it isn't >> output redirection
-					if (*args[i + 1] != '>') {
-						fd = open(args[i + 1], O_RDWR | O_CREAT);
-					}
-					else { //if it is >>
-						fd = open(args[i + 2], O_RDWR | O_APPEND | O_CREAT);
-						i++; //I think this would be necessary to skip the next '>'
-					}
-					dup2(fd, 1);
-				}
-				else if (*args[i] == '<') {
-					fd = open(args[i + 1], O_RDWR);
-					dup2(fd, 0);
-				}
-				else {
-					printf("nothing\n");
-					break;
-				}
-			}*/
-
-
-	/*
-	 				switch (args[i][0]) { //i think this should be fine we only care about > >> < and | and those are all just one character or can be compared to just one more char
-					case '>':
-						//if it isn't >> output redirection
-						if (args[i + 1][0] != '>') {
-							fd = open(args[i + 1], O_RDWR | O_CREAT);
-						}
-						else { //if it is >>
-							fd = open(args[i + 2], O_RDWR | O_APPEND | O_CREAT);
-							i++; //I think this would be necessary to skip the next '>'
-						}
-						dup2(fd, 1);
-						//execvp(cmd, args);
-						break;
-					case '<':
-						fd = open(args[i + 1], O_RDWR);
-						dup2(fd, 0);
-						//execvp(cmd, args);
-						break;
-					default:
-						printf("no action necessary\n");
-						break;
-
-				}
-
 */
 
-	
-}
 
-char **parse_line(char *args[]) {
-
-	printf("%s\n", args[0]);
-	printf("%s\n", args[1]);
-	printf("%s\n", args[2]);
-	/*
-	for (int i = 0; i < 3; i++) {
-		printf("%s\n", args[i]);
-	}
-	*/
-
-	return args;
-}
