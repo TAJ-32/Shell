@@ -22,8 +22,6 @@ int main(int argc, char *argv[]) {
 	
 		input[strcspn(input, "\n")] = 0;
 
-		char buf[] = "hello my friend";
-
 		//strtok the pipes
 
 
@@ -33,6 +31,10 @@ int main(int argc, char *argv[]) {
 			int num_args;
 			char *args[12];
 			char *commargs[12];
+			bool output_re;
+			bool append;
+			bool input_re;
+			char *file;
 		};
 
 		char *arg_blocks[12]; //might need to be block_num + 1 because array needs to be NULL terminated	
@@ -61,15 +63,18 @@ int main(int argc, char *argv[]) {
 		for (int i = 0; i < 12; i++) {
 			struct block *new_block = malloc(sizeof(struct block)); //need to allocate mem for this
 			new_block->num_args = 0;
+			new_block->output_re = false;
+			new_block->append = false;
+			new_block->input_re = false;
 			final_blocks[i] = new_block;
 		}
 
 		char *space_tok;
-	       	char *cmd = space_tok;	
+	       	//char *cmd = space_tok;	
 		
 		char *args[12];
 		int argcount = 0;	
-		int block_count = 0;
+		//int block_count = 0;
 
 		for (int i = 0; i < num_blocks; i++) {
 			space_tok = strtok(arg_blocks[i], " ");
@@ -92,12 +97,43 @@ int main(int argc, char *argv[]) {
 
 		//int pipeint[2] = {3, 4};
 		int numPipes;
-		int pipe_Indices[5];
+		//int pipe_Indices[5];
 		int x = 0;
+
+		for (int i = 0; i < argcount; i++) {
+			if(*args[i] == '|') {
+				numPipes += 1;
+				//pipe_Indices[x] = i;
+				x++;
+				
+			}
+		}
+
 
 		for (int i = 0; i < num_blocks; i++) {
 			printf("BLOCK %d: [", i);
 			for (int j = 0; j < final_blocks[i]->num_args; j++) {
+				switch (*final_blocks[i]->args[j]) {
+					case '>':
+						//printf("Case >\n");
+						//if it isn't >> output redirection
+						if (*final_blocks[i]->args[j + 1] != '>') {
+							final_blocks[i]->output_re = true;
+							final_blocks[i]->file = final_blocks[i]->args[j + 1];	
+						}
+						else { //if it is >>
+							final_blocks[i]->append = true;
+							final_blocks[i]->file = final_blocks[i]->args[j + 2];	
+							j++; //I think this would be necessary to skip the next '>'
+						}
+						break;
+					case '<':
+						final_blocks[i]->input_re = true;
+						break;
+					default:
+						final_blocks[i]->commargs[j] = args[j];
+						break;
+				}
 				printf("%s,", final_blocks[i]->args[j]);
 			}
 			printf("]\n");
@@ -105,9 +141,56 @@ int main(int argc, char *argv[]) {
 
 
 
-		pid_t child_pid, child_pid2, exit_pid, exit_pid2;
-		int exit_value, exit_value2;
+		pid_t child_pid; //, child_pid2, exit_pid, exit_pid2;
+		//int exit_value, exit_value2;
 
+
+		//the num of blocks we have is the num of times we will need to pipe - 1
+
+		int pipefd[numPipes*2];
+
+
+		//this won't run if there is one block only, which is what we want, we just want to exec. Also, we are already in the child process. Which we also want.
+		int other_side = 0;
+		for (int i = 0; i < num_blocks; i++) {
+			int out_fd = 1;
+			int redir_fd;
+			
+			printf("num_blocks: %d, i: %d\n", num_blocks, i);
+
+			if (i != num_blocks - 1) {
+				printf("piping\n");
+				pipe(pipefd + i*2);
+				out_fd = pipefd[1];
+			}
+			
+			if ((child_pid = fork()) < 0) {
+				perror("fork() error");
+			}
+			else if (child_pid == 0) { //child process
+				dup2(out_fd, 1);
+				dup2(other_side, 0);
+				close(out_fd);
+				close(other_side);
+				if (final_blocks[i]->output_re) {
+					redir_fd = open(final_blocks[i]->file, O_CREAT);
+					dup2(redir_fd, 1);
+				}
+				if (final_blocks[i]->input_re) {
+					redir_fd = open(final_blocks[i]->file, O_CREAT);
+					dup2(redir_fd, 0);
+				}
+				printf("about to exec\n");
+				execvp(final_blocks[i]->args[0], final_blocks[i]->args);
+			}
+			else { //parent process
+				//close(pipefd[1]); //close the write end of the first pipe because the child should already have it
+				wait(NULL);
+				other_side = pipefd[0];
+			}
+		}
+
+		/*
 		if ((child_pid = fork()) < 0) {
 			perror("fork() error");
 		}
@@ -135,7 +218,12 @@ int main(int argc, char *argv[]) {
 			//	We dup2(fd, 1). If we are piping into something, we also dup2(pipeint[1], 1).
 			//	If we are draining from a pipe, we also do dup2(pipeint[0], 0)
 			//	Then we execvp(temp_array[0], temp_array);
+			//
+			
 
+
+
+			
 			for (int i = 0; i < num_blocks; i++) {
 				for (int j = 0; j < final_blocks[i]->num_args; j++) {
 					int fd;
@@ -178,6 +266,8 @@ int main(int argc, char *argv[]) {
 			}
 			//how do I deal with the error here
 		}
+	*/
+
 
 	}
 }
