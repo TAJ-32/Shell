@@ -168,10 +168,14 @@ int main(int argc, char *argv[]) {
 				perror("fork() error");
 			}
 			else if (child_pid == 0) { //child process
+				printf("child\n");
+				printf("outfd: %d\n", out_fd);
+				printf("other_side: %d\n", other_side);
 				dup2(out_fd, 1);
 				dup2(other_side, 0);
-				close(out_fd);
-				close(other_side);
+				//close(out_fd);
+				//close(other_side);
+				printf("huh\n");
 				if (final_blocks[i]->output_re) {
 					redir_fd = open(final_blocks[i]->file, O_CREAT);
 					dup2(redir_fd, 1);
@@ -181,6 +185,7 @@ int main(int argc, char *argv[]) {
 					dup2(redir_fd, 0);
 				}
 				printf("about to exec\n");
+				printf("path: %s\n", final_blocks[i]->args[0]);
 				execvp(final_blocks[i]->args[0], final_blocks[i]->args);
 			}
 			else { //parent process
