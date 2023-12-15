@@ -60,14 +60,14 @@ int main(int argc, char *argv[]) {
 
 		char *space_tok;
 		
-		char *args[12];
+		//char *args[12];
 		int argcount = 0;	
 
 		for (int i = 0; i < num_blocks; i++) {
 			space_tok = strtok(arg_blocks[i], " ");
 			int args_in_blk = final_blocks[i]->num_args;
 			while(space_tok != NULL) {
-				args[argcount] = space_tok;
+				//args[argcount] = space_tok;
 				final_blocks[i]->args[args_in_blk] = space_tok;
 				space_tok = strtok(NULL, " ");
 
@@ -78,20 +78,8 @@ int main(int argc, char *argv[]) {
 			final_blocks[i]->args[args_in_blk] = NULL;
 		}
 
-		args[argcount] = NULL; //want to null terminate the arguments
+		//args[argcount] = NULL; //want to null terminate the arguments
 		arg_blocks[num_blocks] = NULL;
-
-		int numPipes;
-		int x = 0;
-
-		for (int i = 0; i < argcount; i++) {
-			if(*args[i] == '|') {
-				numPipes += 1;
-				x++;
-				
-			}
-		}
-
 
 		for (int i = 0; i < num_blocks; i++) {
 			int commcount = 0;// = final_blocks[i]->num_comm;
@@ -112,6 +100,7 @@ int main(int argc, char *argv[]) {
 						break;
 					case '<':
 						final_blocks[i]->input_re = true;
+						final_blocks[i]->file = final_blocks[i]->args[j + 1];
 						break;
 					default:
 						if (final_blocks[i]->output_re || final_blocks[i]->input_re || final_blocks[i]->append) {
@@ -125,9 +114,7 @@ int main(int argc, char *argv[]) {
 			exit_loop: ;
 		}
 
-
 		pid_t child_pid;
-
 		//this won't run if there is one block only, which is what we want, we just want to exec. Also, we are already in the child process. Which we also want.
 		int other_side = 0;
 		for (int i = 0; i < num_blocks; i++) {
@@ -157,7 +144,6 @@ int main(int argc, char *argv[]) {
 				if (out_fd != 1) {
 					close(out_fd);
 				}
-				//close(other_side);
 
 				if (final_blocks[i]->output_re) {
 					printf("output re\n");
@@ -211,21 +197,11 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			else { //parent process		
-				//close(pipefd[1]); //close the write end of the first pipe because the child should already have it
 				if (out_fd != 1) {
 					if (close(out_fd) < 0) {
 						perror("close() error");
 					}
 				}
-				//close(other_side);
-				//
-				/*
-				if (wait(NULL) < 0) {
-					perror("wait() error");
-				}
-				*/
-				//close(out_fd);
-			//	close(out_fd);
 				other_side = pipefd[0];
 			}
 		}
