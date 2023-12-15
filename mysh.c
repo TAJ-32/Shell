@@ -147,19 +147,20 @@ int main(int argc, char *argv[]) {
 
 		//the num of blocks we have is the num of times we will need to pipe - 1
 
-		int pipefd[numPipes*2];
+		//int pipefd[numPipes*2];
 
 
 		//this won't run if there is one block only, which is what we want, we just want to exec. Also, we are already in the child process. Which we also want.
 		int other_side = 0;
 		for (int i = 0; i < num_blocks; i++) {
+			int pipefd[2];
 			int out_fd = 1;
 			int redir_fd;
 			
 			printf("i: %d\n", i);
 
 			if (i != num_blocks - 1) {
-				pipe(pipefd + i*2);
+				pipe(pipefd);
 				out_fd = pipefd[1];
 			}
 			
