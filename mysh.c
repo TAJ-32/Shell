@@ -156,10 +156,9 @@ int main(int argc, char *argv[]) {
 			int out_fd = 1;
 			int redir_fd;
 			
-			printf("num_blocks: %d, i: %d\n", num_blocks, i);
+			printf("i: %d\n", i);
 
 			if (i != num_blocks - 1) {
-				printf("piping\n");
 				pipe(pipefd + i*2);
 				out_fd = pipefd[1];
 			}
@@ -168,14 +167,17 @@ int main(int argc, char *argv[]) {
 				perror("fork() error");
 			}
 			else if (child_pid == 0) { //child process
-				printf("child\n");
+				printf("child: %s\n", final_blocks[i]->args[0]);
 				printf("outfd: %d\n", out_fd);
 				printf("other_side: %d\n", other_side);
+				
 				dup2(out_fd, 1);
 				dup2(other_side, 0);
-				//close(out_fd);
+				if (out_fd != 1) {
+					close(out_fd);
+				}
 				//close(other_side);
-				printf("huh\n");
+
 				if (final_blocks[i]->output_re) {
 					redir_fd = open(final_blocks[i]->file, O_CREAT);
 					dup2(redir_fd, 1);
@@ -184,14 +186,23 @@ int main(int argc, char *argv[]) {
 					redir_fd = open(final_blocks[i]->file, O_CREAT);
 					dup2(redir_fd, 0);
 				}
-				printf("about to exec\n");
-				printf("path: %s\n", final_blocks[i]->args[0]);
+
 				execvp(final_blocks[i]->args[0], final_blocks[i]->args);
 			}
-			else { //parent process
+			else { //parent process		
 				//close(pipefd[1]); //close the write end of the first pipe because the child should already have it
+				if (out_fd != 1) {
+					close(out_fd);
+				}
+				//close(other_side);
 				wait(NULL);
+				printf("out_fd: %d\n", out_fd);
+				printf("other_side: %d\n", other_side);
+				printf("back in the parent\n");
+				//close(out_fd);
+			//	close(out_fd);
 				other_side = pipefd[0];
+				printf("donezo\n");
 			}
 		}
 
