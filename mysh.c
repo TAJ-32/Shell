@@ -22,11 +22,6 @@ int main(int argc, char *argv[]) {
 	
 		input[strcspn(input, "\n")] = 0;
 
-		//strtok the pipes
-
-
-		//char *arg_blocks[12];
-
 		struct block {
 			int num_args;
 			int num_comm;
@@ -39,11 +34,6 @@ int main(int argc, char *argv[]) {
 		};
 
 		char *arg_blocks[12]; //might need to be block_num + 1 because array needs to be NULL terminated	
-
-
-
-
-		//how much of the parsing should I be doing in the child
 		
 		char *pipe_tok = strtok(input, "|");
 		int num_blocks = 0;
@@ -53,11 +43,6 @@ int main(int argc, char *argv[]) {
 			pipe_tok = strtok(NULL, "|");
 			num_blocks++;
 		}
-
-		for (int i = 0; i < num_blocks; i++) {
-			printf("blocks: %s\n", arg_blocks[i]);
-		}
-
 
 		struct block *final_blocks[12];
 
@@ -72,11 +57,9 @@ int main(int argc, char *argv[]) {
 		}
 
 		char *space_tok;
-	       	//char *cmd = space_tok;	
 		
 		char *args[12];
 		int argcount = 0;	
-		//int block_count = 0;
 
 		for (int i = 0; i < num_blocks; i++) {
 			space_tok = strtok(arg_blocks[i], " ");
@@ -96,16 +79,12 @@ int main(int argc, char *argv[]) {
 		args[argcount] = NULL; //want to null terminate the arguments
 		arg_blocks[num_blocks] = NULL;
 
-
-		//int pipeint[2] = {3, 4};
 		int numPipes;
-		//int pipe_Indices[5];
 		int x = 0;
 
 		for (int i = 0; i < argcount; i++) {
 			if(*args[i] == '|') {
 				numPipes += 1;
-				//pipe_Indices[x] = i;
 				x++;
 				
 			}
@@ -113,21 +92,19 @@ int main(int argc, char *argv[]) {
 
 
 		for (int i = 0; i < num_blocks; i++) {
-			//printf("BLOCK %d: [", i);
 			int commcount = 0;// = final_blocks[i]->num_comm;
 			for (int j = 0; j < final_blocks[i]->num_args; j++) {
 				commcount = final_blocks[i]->num_comm;
 				switch (*final_blocks[i]->args[j]) {
 					case '>':
-						//printf("Case >\n");
 						//if it isn't >> output redirection
-						if (*final_blocks[i]->args[j + 1] != '>') {
+						if (strlen(final_blocks[i]->args[j]) == 1) {
 							final_blocks[i]->output_re = true;
 							final_blocks[i]->file = final_blocks[i]->args[j + 1];	
 						}
 						else { //if it is >>
 							final_blocks[i]->append = true;
-							final_blocks[i]->file = final_blocks[i]->args[j + 2];	
+							final_blocks[i]->file = final_blocks[i]->args[j + 1];	
 							j++; //I think this would be necessary to skip the next '>'
 						}
 						break;
@@ -142,18 +119,10 @@ int main(int argc, char *argv[]) {
 						final_blocks[i]->num_comm += 1;
 						break;
 				}
-				//printf("%s,", final_blocks[i]->args[j]);
 			}
 			exit_loop: ;
-			//printf("]\n");
 		}
 
-
-		for (int i = 0; i < num_blocks; i++) {
-			for (int j = 0; j < final_blocks[i]->num_comm; j++) {
-				printf("commargs for block %d: %s\n", i, final_blocks[i]->commargs[j]);
-			}
-		}
 
 		pid_t child_pid; //, child_pid2, exit_pid, exit_pid2;
 		//int exit_value, exit_value2;
@@ -189,15 +158,24 @@ int main(int argc, char *argv[]) {
 				//close(other_side);
 
 				if (final_blocks[i]->output_re) {
-					redir_fd = open(final_blocks[i]->file, O_CREAT);
+					printf("output re\n");
+					redir_fd = open(final_blocks[i]->file, O_RDWR | O_CREAT, 0777);
+					printf("redir_fd: %d\n", redir_fd);
 					dup2(redir_fd, 1);
+					close(redir_fd);
 				}
 				if (final_blocks[i]->input_re) {
-					redir_fd = open(final_blocks[i]->file, O_CREAT);
+					redir_fd = open(final_blocks[i]->file, O_RDWR | O_CREAT, 0777);
 					dup2(redir_fd, 0);
+					close(redir_fd);
 				}
-
-				execvp(final_blocks[i]->args[0], final_blocks[i]->args);
+				if (final_blocks[i]->append) {
+					printf("append re\n");
+					redir_fd = open(final_blocks[i]->file, O_RDWR | O_CREAT | O_APPEND, 0777);
+					dup2(redir_fd, 1);
+					close(redir_fd);
+				}
+				execvp(final_blocks[i]->args[0], final_blocks[i]->commargs);
 			}
 			else { //parent process		
 				//close(pipefd[1]); //close the write end of the first pipe because the child should already have it

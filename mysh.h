@@ -14,6 +14,4 @@
 #include <string.h>
 #include <fcntl.h>
 
-char **parse_line(char *args[]); 
-
 #endif
