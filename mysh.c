@@ -141,7 +141,8 @@ int main(int argc, char *argv[]) {
 				}
 				out_fd = pipefd[1];
 			}
-			
+		
+			//do all the forking first and then all the waiting	
 			if ((child_pid = fork()) < 0) {
 				perror("fork() error");
 			}
@@ -217,12 +218,20 @@ int main(int argc, char *argv[]) {
 					}
 				}
 				//close(other_side);
+				//
+				/*
 				if (wait(NULL) < 0) {
 					perror("wait() error");
 				}
+				*/
 				//close(out_fd);
 			//	close(out_fd);
 				other_side = pipefd[0];
+			}
+		}
+		for (int i = 0; i < num_blocks; i++) {
+			if (wait(NULL) < 0) {
+				perror("wait() error");
 			}
 		}
 	}
