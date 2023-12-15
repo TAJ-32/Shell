@@ -162,39 +162,52 @@ int main(int argc, char *argv[]) {
 					printf("output re\n");
 					if ((redir_fd = open(final_blocks[i]->file, O_RDWR | O_CREAT, 0777)) < 0) {
 						perror("open() error");
+						exit(42);
 					}
 					printf("redir_fd: %d\n", redir_fd);
 					if (dup2(redir_fd, 1) < 0) {
 						perror("dup2() error");
+						exit(42);
 					}
 					if (close(redir_fd) < 0) {
 						perror("close() error");
+						exit(42);
 					}
 				}
 				if (final_blocks[i]->input_re) {
 					if ((redir_fd = open(final_blocks[i]->file, O_RDWR | O_CREAT, 0777)) < 0) {
 						perror("open() error");
+						exit(42);
 					}
 					if (dup2(redir_fd, 0) < 0) {
 						perror("dup2() error");
+						exit(42);
 					}
 					if (close(redir_fd) < 0) {
 						perror("close() error");
+						exit(42);
 					}
 				}
 				if (final_blocks[i]->append) {
 					printf("append re\n");
 					if ((redir_fd = open(final_blocks[i]->file, O_RDWR | O_CREAT | O_APPEND, 0777)) < 0) {
 						perror("open() error");
+						exit(42);
 					}
 					if (dup2(redir_fd, 1) < 0) {
 						perror("dup2() error");
+						exit(42);
 					}
 					if (close(redir_fd) < 0) {
 						perror("close() error");
+						exit(42);
 					}
 				}
-				execvp(final_blocks[i]->args[0], final_blocks[i]->commargs);
+				if ((execvp(final_blocks[i]->args[0], final_blocks[i]->commargs)) < 0) {
+					perror("Not a valid command");
+					errno = ENOENT;
+					exit(42);
+				}
 			}
 			else { //parent process		
 				//close(pipefd[1]); //close the write end of the first pipe because the child should already have it
