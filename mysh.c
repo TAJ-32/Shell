@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
 
 		struct block {
 			int num_args;
+			int num_comm;
 			char *args[12];
 			char *commargs[12];
 			bool output_re;
@@ -63,6 +64,7 @@ int main(int argc, char *argv[]) {
 		for (int i = 0; i < 12; i++) {
 			struct block *new_block = malloc(sizeof(struct block)); //need to allocate mem for this
 			new_block->num_args = 0;
+			new_block->num_comm = 0;
 			new_block->output_re = false;
 			new_block->append = false;
 			new_block->input_re = false;
@@ -111,8 +113,10 @@ int main(int argc, char *argv[]) {
 
 
 		for (int i = 0; i < num_blocks; i++) {
-			printf("BLOCK %d: [", i);
+			//printf("BLOCK %d: [", i);
+			int commcount = 0;// = final_blocks[i]->num_comm;
 			for (int j = 0; j < final_blocks[i]->num_args; j++) {
+				commcount = final_blocks[i]->num_comm;
 				switch (*final_blocks[i]->args[j]) {
 					case '>':
 						//printf("Case >\n");
@@ -131,15 +135,25 @@ int main(int argc, char *argv[]) {
 						final_blocks[i]->input_re = true;
 						break;
 					default:
-						final_blocks[i]->commargs[j] = args[j];
+						if (final_blocks[i]->output_re || final_blocks[i]->input_re || final_blocks[i]->append) {
+							goto exit_loop;
+						}
+						final_blocks[i]->commargs[commcount] = final_blocks[i]->args[j];
+						final_blocks[i]->num_comm += 1;
 						break;
 				}
-				printf("%s,", final_blocks[i]->args[j]);
+				//printf("%s,", final_blocks[i]->args[j]);
 			}
-			printf("]\n");
+			exit_loop: ;
+			//printf("]\n");
 		}
 
 
+		for (int i = 0; i < num_blocks; i++) {
+			for (int j = 0; j < final_blocks[i]->num_comm; j++) {
+				printf("commargs for block %d: %s\n", i, final_blocks[i]->commargs[j]);
+			}
+		}
 
 		pid_t child_pid; //, child_pid2, exit_pid, exit_pid2;
 		//int exit_value, exit_value2;
@@ -156,8 +170,6 @@ int main(int argc, char *argv[]) {
 			int pipefd[2];
 			int out_fd = 1;
 			int redir_fd;
-			
-			printf("i: %d\n", i);
 
 			if (i != num_blocks - 1) {
 				pipe(pipefd);
@@ -168,9 +180,6 @@ int main(int argc, char *argv[]) {
 				perror("fork() error");
 			}
 			else if (child_pid == 0) { //child process
-				printf("child: %s\n", final_blocks[i]->args[0]);
-				printf("outfd: %d\n", out_fd);
-				printf("other_side: %d\n", other_side);
 				
 				dup2(out_fd, 1);
 				dup2(other_side, 0);
@@ -197,13 +206,9 @@ int main(int argc, char *argv[]) {
 				}
 				//close(other_side);
 				wait(NULL);
-				printf("out_fd: %d\n", out_fd);
-				printf("other_side: %d\n", other_side);
-				printf("back in the parent\n");
 				//close(out_fd);
 			//	close(out_fd);
 				other_side = pipefd[0];
-				printf("donezo\n");
 			}
 		}
 
