@@ -65,22 +65,8 @@ int main(int argc, char *argv[]) {
 				}
 					
 				for (int i = 0; i < num_args; i++) {
-					printf("arg %d: %s\n", i, args_in_prog[i]);
 					switch (*args_in_prog[i]) {
-						case '>':
-							//if it isn't >> output redirection
-							if (strlen(curr_arg) == 1) {
-								output_re = true;
-								file = args_in_prog[i + 1];	
-							}
-							else { //if it is >>
-								append = true;
-								file = args_in_prog[i + 1];	
-								i++; //I think this would be necessary to skip the next '>'
-							}
-							break;
 						case '<':
-							printf("input\n");
 							input_re = true;
 							file = args_in_prog[i + 1];
 							break;
@@ -103,7 +89,6 @@ int main(int argc, char *argv[]) {
 				if (dup2(out_fd, 1) < 0) {
 					perror("dup2() error");
 				}
-				printf("other_side: %d\n", other_side);
 				if (dup2(other_side, 0) < 0) {
 					perror("dup2() error");
 				}
@@ -111,43 +96,12 @@ int main(int argc, char *argv[]) {
 					close(out_fd);
 				}
 
-				if (output_re) {
-					printf("output re\n");
-					if ((redir_fd = open(file, O_WRONLY | O_CREAT, 0777)) < 0) {
-						perror("open() error");
-						exit(42);
-					}
-					printf("redir_fd: %d\n", redir_fd);
-					if (dup2(redir_fd, 1) < 0) {
-						perror("dup2() error");
-						exit(42);
-					}
-					if (close(redir_fd) < 0) {
-						perror("close() error");
-						exit(42);
-					}
-				}
 				if (input_re) {
 					if ((redir_fd = open(file, O_RDONLY | O_CREAT, 0777)) < 0) {
 						perror("open() error");
 						exit(42);
 					}
 					if (dup2(redir_fd, 0) < 0) {
-						perror("dup2() error");
-						exit(42);
-					}
-					if (close(redir_fd) < 0) {
-						perror("close() error");
-						exit(42);
-					}
-				}
-				if (append) {
-					printf("append re\n");
-					if ((redir_fd = open(file, O_WRONLY | O_CREAT | O_APPEND, 0777)) < 0) {
-						perror("open() error");
-						exit(42);
-					}
-					if (dup2(redir_fd, 1) < 0) {
 						perror("dup2() error");
 						exit(42);
 					}
@@ -184,7 +138,6 @@ int main(int argc, char *argv[]) {
 		bool input_re = false;
 		bool append = false;
 		char *file;
-
 		if ((child_pid = fork()) < 0) {
 			perror("fork() error");
 		}
@@ -206,11 +159,10 @@ int main(int argc, char *argv[]) {
 			}
 				
 			for (int i = 0; i < num_args; i++) {
-				printf("arg %d: %s\n", i, args_in_prog[i]);
 				switch (*args_in_prog[i]) {
 					case '>':
 						//if it isn't >> output redirection
-						if (strlen(curr_arg) == 1) {
+						if (strlen(args_in_prog[i]) == 1) {
 							output_re = true;
 							file = args_in_prog[i + 1];	
 						}
@@ -221,37 +173,31 @@ int main(int argc, char *argv[]) {
 						}
 						break;
 					case '<':
-						printf("input\n");
 						input_re = true;
 						file = args_in_prog[i + 1];
 						break;
 					default:
 						if (output_re || input_re || append) {
-							goto exit_loop2;
+							goto exitloop2;
 						}
-
 						commargs[commcount] = args_in_prog[i];
 						commcount += 1;
 						break;
 				}
 			}
-			exit_loop2: ;
+			exitloop2: ;
 			
 			commargs[commcount] = NULL;
 
-			printf("other_side: %d\n", other_side);
 			if (dup2(other_side, 0) < 0) {
 				perror("dup2() error");
 			}
 
-
 			if (output_re) {
-				printf("output re\n");
 				if ((redir_fd = open(file, O_WRONLY | O_CREAT, 0777)) < 0) {
 					perror("open() error");
 					exit(42);
 				}
-				printf("redir_fd: %d\n", redir_fd);
 				if (dup2(redir_fd, 1) < 0) {
 					perror("dup2() error");
 					exit(42);
@@ -276,7 +222,6 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			if (append) {
-				printf("append re\n");
 				if ((redir_fd = open(file, O_WRONLY | O_CREAT | O_APPEND, 0777)) < 0) {
 					perror("open() error");
 					exit(42);
@@ -308,8 +253,6 @@ int main(int argc, char *argv[]) {
 			}
 			//free(final_blocks[i]);
 		}
-
-		printf("out of loop\n");
 	}
 }
 
