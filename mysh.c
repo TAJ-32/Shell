@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			else { //parent process
-				close(pipedfd[1]);
+				close(pipefd[1]);
 				if (out_fd != 1) {
 					if (close(out_fd) < 0) {
 						perror("close() error");
@@ -178,13 +178,13 @@ int main(int argc, char *argv[]) {
 			num_programs++;
 		}
 
-		printf("out of here\n");
-		//one last program
+
 		int redir_fd;
 		bool output_re = false;
 		bool input_re = false;
 		bool append = false;
 		char *file;
+
 		if ((child_pid = fork()) < 0) {
 			perror("fork() error");
 		}
@@ -244,6 +244,7 @@ int main(int argc, char *argv[]) {
 				perror("dup2() error");
 			}
 
+
 			if (output_re) {
 				printf("output re\n");
 				if ((redir_fd = open(file, O_WRONLY | O_CREAT, 0777)) < 0) {
@@ -295,11 +296,11 @@ int main(int argc, char *argv[]) {
 				exit(42);
 			}
 		}
-		else { //parent process		
+		else { //parent process
 
 		}
 
-		
+
 
 		for (int i = 0; i < num_programs; i++) {
 			if (wait(NULL) < 0) {
