@@ -2,6 +2,17 @@
 
 #define DELIMS " <>|"
 
+struct block {
+	int num_args;
+	int num_comm;
+	char *args[12];
+	char *commargs[12];
+	bool output_re;
+	bool append;
+	bool input_re;
+	char *file;
+};
+
 int main(int argc, char *argv[]) {
 
 	char current_dir[256];
@@ -23,17 +34,6 @@ int main(int argc, char *argv[]) {
 		}
 	
 		input[strcspn(input, "\n")] = 0;
-
-		struct block {
-			int num_args;
-			int num_comm;
-			char *args[12];
-			char *commargs[12];
-			bool output_re;
-			bool append;
-			bool input_re;
-			char *file;
-		};
 
 		char *arg_blocks[12]; //might need to be block_num + 1 because array needs to be NULL terminated	
 		
@@ -80,6 +80,10 @@ int main(int argc, char *argv[]) {
 
 		//args[argcount] = NULL; //want to null terminate the arguments
 		arg_blocks[num_blocks] = NULL;
+
+		if (strcmp(final_blocks[0]->args[0], "exit") == 0) {
+			return 0;
+		}
 
 		for (int i = 0; i < num_blocks; i++) {
 			int commcount = 0;// = final_blocks[i]->num_comm;
@@ -205,11 +209,13 @@ int main(int argc, char *argv[]) {
 				other_side = pipefd[0];
 			}
 		}
+
 		for (int i = 0; i < num_blocks; i++) {
 			if (wait(NULL) < 0) {
 				perror("wait() error");
 			}
 		}
+
 	}
 }
 
