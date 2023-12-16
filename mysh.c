@@ -162,7 +162,8 @@ int main(int argc, char *argv[]) {
 					exit(42);
 				}
 			}
-			else { //parent process		
+			else { //parent process
+				close(pipedfd[1]);
 				if (out_fd != 1) {
 					if (close(out_fd) < 0) {
 						perror("close() error");
