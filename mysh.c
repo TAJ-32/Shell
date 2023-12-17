@@ -1,4 +1,3 @@
-#include "mysh.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -11,6 +10,11 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <stdbool.h>
+
+#define INPUT_SIZE 4096
+
+int execute_program(char *curr_program, int other_side, int pipefd[], bool piping);
 
 int main(int argc, char *argv[]) {
 
@@ -24,11 +28,11 @@ int main(int argc, char *argv[]) {
 	}	
 
 	while (true) {
-		char input[4096];
+		char input[INPUT_SIZE];
 		int num_programs = 1;
 		
 		printf("[%s]# ", current_dir);
-		if (fgets(input, 4096, stdin) == NULL) { //use fgets to store the command in a string
+		if (fgets(input, INPUT_SIZE, stdin) == NULL) { //use fgets to store the command in a string
 			return -1;
 		}
 	
