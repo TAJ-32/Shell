@@ -1,8 +1,16 @@
 #include "mysh.h"
-
-#define DELIMS " <>|"
-
-int execute_program(char *curr_program, int other_side, int pipefd[], bool piping);
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <time.h>
+#include <string.h>
+#include <fcntl.h>
+#include <errno.h>
 
 int main(int argc, char *argv[]) {
 
