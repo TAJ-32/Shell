@@ -33,9 +33,13 @@ int main(int argc, char *argv[]) {
 		
 		printf("[%s]# ", current_dir);
 		if (fgets(input, INPUT_SIZE, stdin) == NULL) { //use fgets to store the command in a string
-			return -1;
+			break;
 		}
-	
+
+		if (input[0] == '\n') {
+			goto restart;
+		}
+
 		input[strcspn(input, "\n")] = 0;
 
 		char *curr_program = strtok(input, "|");
@@ -65,7 +69,9 @@ int main(int argc, char *argv[]) {
 				perror("wait() error");
 			}
 		}
+		restart: ;
 	}
+	return 0;
 }
 
 int execute_program(char *curr_program, int other_side, int pipefd[], bool piping) {
