@@ -162,7 +162,7 @@ int execute_program(char *curr_program, int other_side, int pipefd[], bool pipin
 			}
 		}
 		if (input_re) {
-			if ((redir_fd = open(file, O_RDONLY | O_CREAT, 0777)) < 0) {
+			if ((redir_fd = open(file, O_RDONLY, 0777)) < 0) {
 				perror("open() error");
 				exit(42);
 			}
